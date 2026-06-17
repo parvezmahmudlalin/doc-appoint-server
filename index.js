@@ -30,6 +30,22 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     await client.connect();
+
+    const db = client.db("doc-appoint");
+    const doctorCollection = db.collection("doctors");
+
+   app.get('/doctors',async (req,res) => {
+    const result = await doctorCollection.find().toArray();
+
+    res.json(result)
+   })
+
+
+
+
+
+
+
     await client.db("admin").command({ ping: 1 });
     console.log("MongoDB connected successfully");
  } finally {
