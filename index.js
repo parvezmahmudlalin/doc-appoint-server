@@ -34,12 +34,19 @@ async function run() {
     const db = client.db("doc-appoint");
     const doctorCollection = db.collection("doctors");
 
-   app.get('/doctors',async (req,res) => {
+   app.get('/appointments',async (req,res) => {
     const result = await doctorCollection.find().toArray();
 
     res.json(result)
    })
 
+    app.get("/appointmensts/:id", async (req, res) => {
+      const { id } = req.params;
+      const result = await doctorCollection.findOne({
+        _id: new ObjectId(id),
+      });
+      res.json(result);
+    });
 
 
 
