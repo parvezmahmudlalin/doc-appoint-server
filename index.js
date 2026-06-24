@@ -27,6 +27,12 @@ const client = new MongoClient(uri, {
   },
 });
 
+
+
+const JWKS = createRemoteJWKSet(
+  new URL("http://localhost:3000/api/auth/jwks")
+)
+
 async function run() {
   try {
     await client.connect();
