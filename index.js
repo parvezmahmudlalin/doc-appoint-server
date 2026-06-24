@@ -4,7 +4,7 @@ dns.setServers(["8.8.8.8", "8.8.4.4"]);
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 
 dotenv.config();
@@ -34,13 +34,73 @@ async function run() {
     const db = client.db("doc-appoint");
     const doctorCollection = db.collection("doctors");
 
+    const bookingCollection = db.collection("bookings");
+
+    app.post('/booking', async (req, res) => {
+  const bookingData = req.body;
+
+  if (!bookingData.userId) {
+    return res.status(400).json({
+      success: false,
+      message: "userId is required"
+    });
+  }
+
+  const result = await bookingCollection.insertOne({
+    ...bookingData,
+     userId: bookingData.userId, 
+    createdAt: new Date()
+  });
+
+  res.json({
+    success: true,
+    insertedId: result.insertedId,
+  });
+});
+
+     app.get('/booking/:userId', async(req,res) => {
+      const {userId} = req.params
+
+      const result = await bookingCollection.find({userId: userId}).toArray();
+
+      res.json(result)
+    })
+    app.patch('/booking/:bookingId', async (req, res) => {
+  const { bookingId } = req.params;
+  const updateData = req.body;
+
+  const result = await bookingCollection.updateOne(
+    { _id: new ObjectId(bookingId) },
+    { $set: updateData }
+  );
+
+  res.json(result);
+});
+
+    app.delete('/booking/:bookingId' , async(req,res) => {
+      const {bookingId} = req.params
+      const result = await bookingCollection.deleteOne({_id: new ObjectId(bookingId)})
+
+      res.json(result)
+    })
+
    app.get('/appointments',async (req,res) => {
     const result = await doctorCollection.find().toArray();
+
+
 
     res.json(result)
    })
 
-    app.get("/appointmensts/:id", async (req, res) => {
+   app.get("/appointments/book",async(req,res) => {
+    const result = await bookingCollection.find().toArray();
+
+    res.json(result)
+   })
+
+
+   
+    app.get("/appointments/:id", async (req, res) => {
       const { id } = req.params;
       const result = await doctorCollection.findOne({
         _id: new ObjectId(id),
@@ -48,7 +108,7 @@ async function run() {
       res.json(result);
     });
 
-
+   
 
 
 
