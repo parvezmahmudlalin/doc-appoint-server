@@ -6,7 +6,6 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
-
 dotenv.config();
 
 const app = express();
@@ -15,10 +14,9 @@ const PORT = 5000;
 app.use(cors());
 app.use(express.json());
 
-
 const uri = process.env.MONGODB_URI;
 
-console.log("MONGODB_URI =", uri); 
+console.log("MONGODB_URI =", uri);
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -27,12 +25,27 @@ const client = new MongoClient(uri, {
   },
 });
 
+// const JWKS = createRemoteJWKSet(new URL("http://localhost:3000/api/auth/jwks"));
 
+// const verifyToken = async (req, res, next) => {
+//   const authHeader = req?.headers.authorization;
 
-const JWKS = createRemoteJWKSet(
-  new URL("http://localhost:3000/api/auth/jwks")
-)
+//   if (!authHeader) {
+//     return res.status(401).json({
+//       message: "Unauthorized",
+//     });
+//   }
 
+//   try {
+//     const { payload } = await jwtVerify(token, JWKS);
+
+//     console.log(payload);
+
+//     next();
+//   } catch (error) {
+//     return res.status(403).json({ message: "Forbidden" });
+//   }
+// };
 async function run() {
   try {
     await client.connect();
@@ -42,71 +55,73 @@ async function run() {
 
     const bookingCollection = db.collection("bookings");
 
-    app.post('/booking', async (req, res) => {
-  const bookingData = req.body;
+    app.post("/booking",async (req, res) => {
+      const bookingData = req.body;
 
-  if (!bookingData.userId) {
-    return res.status(400).json({
-      success: false,
-      message: "userId is required"
+      if (!bookingData.userId) {
+        return res.status(400).json({
+          success: false,
+          message: "userId is required",
+        });
+      }
+
+      const result = await bookingCollection.insertOne({
+        ...bookingData,
+        userId: bookingData.userId,
+        createdAt: new Date(),
+      });
+
+      res.json({
+        success: true,
+        insertedId: result.insertedId,
+      });
     });
-  }
 
-  const result = await bookingCollection.insertOne({
-    ...bookingData,
-     userId: bookingData.userId, 
-    createdAt: new Date()
-  });
+    app.get("/booking/:userId", async (req, res) => {
+      const { userId } = req.params;
 
-  res.json({
-    success: true,
-    insertedId: result.insertedId,
-  });
-});
+      const result = await bookingCollection.find({ userId: userId }).toArray();
 
-     app.get('/booking/:userId', async(req,res) => {
-      const {userId} = req.params
+      res.json(result);
+    });
+    app.patch("/booking/:bookingId", async (req, res) => {
+      const { bookingId } = req.params;
+      const updateData = req.body;
 
-      const result = await bookingCollection.find({userId: userId}).toArray();
+      const result = await bookingCollection.updateOne(
+        { _id: new ObjectId(bookingId) },
+        { $set: updateData },
+      );
 
-      res.json(result)
-    })
-    app.patch('/booking/:bookingId', async (req, res) => {
-  const { bookingId } = req.params;
-  const updateData = req.body;
+      res.json(result);
+    });
 
-  const result = await bookingCollection.updateOne(
-    { _id: new ObjectId(bookingId) },
-    { $set: updateData }
-  );
+    app.delete("/booking/:bookingId", async (req, res) => {
+      const { bookingId } = req.params;
+      const result = await bookingCollection.deleteOne({
+        _id: new ObjectId(bookingId),
+      });
 
-  res.json(result);
-});
+      res.json(result);
+    });
 
-    app.delete('/booking/:bookingId' , async(req,res) => {
-      const {bookingId} = req.params
-      const result = await bookingCollection.deleteOne({_id: new ObjectId(bookingId)})
+    app.get("/appointments", async (req, res) => {
+      const result = await doctorCollection.find().toArray();
 
-      res.json(result)
-    })
+      res.json(result);
+    });
 
-   app.get('/appointments',async (req,res) => {
-    const result = await doctorCollection.find().toArray();
+    app.get("/appointments/book", async (req, res) => {
+      const result = await bookingCollection.find().toArray();
 
+      res.json(result);
+    });
 
-
-    res.json(result)
-   })
-
-   app.get("/appointments/book",async(req,res) => {
-    const result = await bookingCollection.find().toArray();
-
-    res.json(result)
-   })
-
-
-   
-    app.get("/appointments/:id", async (req, res) => {
+    app.get("/appointments/:id",(req,res,next) => {
+      const header = req.headers.authorization
+      console.log(header)
+      next()
+    } ,async (req, res) => {
       const { id } = req.params;
       const result = await doctorCollection.findOne({
         _id: new ObjectId(id),
@@ -114,14 +129,9 @@ async function run() {
       res.json(result);
     });
 
-   
-
-
-
-
     await client.db("admin").command({ ping: 1 });
     console.log("MongoDB connected successfully");
- } finally {
+  } finally {
     // await client.close();
   }
 }
